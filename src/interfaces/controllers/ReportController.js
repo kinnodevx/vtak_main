@@ -227,6 +227,73 @@ class ReportController {
       res.status(500).json({ error: 'Erro ao listar arquivos' });
     }
   }
+
+  async listDirectories(req, res) {
+    try {
+      const baseDir = path.join(process.cwd(), 'relatories');
+      
+      // Verifica se o diretório base existe
+      try {
+        await fs.access(baseDir);
+      } catch (error) {
+        return res.status(404).json({ error: 'Diretório de relatórios não encontrado' });
+      }
+      
+      // Lista todas as subpastas
+      const directories = await fs.readdir(baseDir);
+      
+      // Para cada subpasta, obtém os arquivos
+      const directoriesWithFiles = await Promise.all(
+        directories.map(async (dir) => {
+          const dirPath = path.join(baseDir, dir);
+          const stats = await fs.stat(dirPath);
+          
+          // Verifica se é um diretório
+          if (!stats.isDirectory()) {
+            return null;
+          }
+          
+          // Lista os arquivos do diretório
+          const files = await fs.readdir(dirPath);
+          
+          // Obtém detalhes de cada arquivo
+          const fileDetails = await Promise.all(
+            files.map(async (file) => {
+              const filePath = path.join(dirPath, file);
+              const fileStats = await fs.stat(filePath);
+              
+              return {
+                name: file,
+                size: fileStats.size,
+                type: path.extname(file).substring(1),
+                created: fileStats.birthtime,
+                modified: fileStats.mtime
+              };
+            })
+          );
+          
+          return {
+            name: dir,
+            path: dir,
+            created: stats.birthtime,
+            modified: stats.mtime,
+            files: fileDetails
+          };
+        })
+      );
+      
+      // Remove entradas nulas (não são diretórios)
+      const validDirectories = directoriesWithFiles.filter(dir => dir !== null);
+      
+      return res.json({
+        base_directory: 'relatories',
+        directories: validDirectories
+      });
+    } catch (error) {
+      console.error('Erro ao listar diretórios:', error);
+      return res.status(500).json({ error: 'Erro ao listar diretórios e arquivos' });
+    }
+  }
 }
 
 module.exports = { ReportController };

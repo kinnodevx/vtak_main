@@ -14,6 +14,9 @@ module.exports = () => {
   // Todas as outras rotas protegidas por autenticação JWT
   router.use(authMiddleware);
   
+  // Rota para listar diretórios e arquivos
+  router.get('/directories', reportController.listDirectories.bind(reportController));
+  
   // Rota para upload de relatório
   router.post('/upload', uploadMiddleware.single('report'), reportController.uploadReport.bind(reportController));
   
