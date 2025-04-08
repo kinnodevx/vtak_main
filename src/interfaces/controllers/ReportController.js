@@ -1,14 +1,17 @@
 const path = require('path');
 const fs = require('fs').promises;
 const AdmZip = require('adm-zip');
+const XLSX = require('xlsx');
 const ReportRepository = require('../../infrastructure/repositories/ReportRepository');
 const { UploadRepository } = require('../../infrastructure/repositories/UploadRepository');
+const { RelatoryRepository } = require('../../infrastructure/repositories/RelatoryRepository');
 const { v4: uuidv4 } = require('uuid');
 
 class ReportController {
   constructor() {
     this.reportRepository = new ReportRepository();
     this.uploadRepository = new UploadRepository();
+    this.relatoryRepository = new RelatoryRepository();
   }
   
   async uploadReport(req, res) {
@@ -318,6 +321,97 @@ class ReportController {
         await fs.access(filePath);
         const stats = await fs.stat(filePath);
         
+        // Lê o arquivo Excel
+        const workbook = XLSX.readFile(filePath);
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // Converte para JSON
+        const data = XLSX.utils.sheet_to_json(worksheet, { header: 'A' });
+        
+        // Extrai a coluna W (índice 22) a partir da linha 3
+        const columnW = data
+          .slice(2) // Começa da linha 3 (índice 2)
+          .map(row => row['W'])
+          .filter(value => value !== undefined && value !== null && value !== '')
+          .map(value => {
+            // Converte o número de série do Excel para data
+            if (typeof value === 'number') {
+              // O Excel usa 1 de janeiro de 1900 como dia 1
+              // Precisamos subtrair 25569 para converter para o timestamp do JavaScript
+              const date = new Date((value - 25569) * 86400 * 1000);
+              return date.toLocaleDateString('pt-BR');
+            }
+            return value;
+          });
+        
+        // Extrai a coluna Y (índice 24) a partir da linha 3
+        const columnY = data
+          .slice(2) // Começa da linha 3 (índice 2)
+          .map(row => row['Y'])
+          .filter(value => value !== undefined && value !== null && value !== '')
+          .map(value => {
+            // Converte o número de série do Excel para data
+            if (typeof value === 'number') {
+              // O Excel usa 1 de janeiro de 1900 como dia 1
+              // Precisamos subtrair 25569 para converter para o timestamp do JavaScript
+              const date = new Date((value - 25569) * 86400 * 1000);
+              return date.toLocaleDateString('pt-BR');
+            }
+            return value;
+          });
+        
+        console.log('Conteúdo da coluna W (a partir da linha 3):');
+        columnW.forEach((value, index) => {
+          console.log(`Linha ${index + 3}: ${value}`);
+        });
+        
+        console.log('Conteúdo da coluna Y (a partir da linha 3):');
+        columnY.forEach((value, index) => {
+          console.log(`Linha ${index + 3}: ${value}`);
+        });
+        
+        // Salva cada data na tabela relatories
+        const savedRelatories = [];
+        
+        // Determina o número máximo de itens para processar
+        const maxItems = Math.max(columnW.length, columnY.length);
+        
+        for (let i = 0; i < maxItems; i++) {
+          // Converte a data da coluna W do formato pt-BR (dd/mm/aaaa) para o formato ISO (aaaa-mm-dd)
+          let emissionDate = null;
+          if (i < columnW.length && columnW[i]) {
+            const [day, month, year] = columnW[i].split('/');
+            emissionDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          }
+          
+          // Converte a data da coluna Y do formato pt-BR (dd/mm/aaaa) para o formato ISO (aaaa-mm-dd)
+          let dateCession = null;
+          if (i < columnY.length && columnY[i]) {
+            const [day, month, year] = columnY[i].split('/');
+            dateCession = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          }
+          
+          // Se temos pelo menos uma data válida, criamos o registro
+          if (emissionDate || dateCession) {
+            // Cria um novo registro na tabela relatories
+            const relatoryData = {
+              emission_date: emissionDate || dateCession, // Se não tiver emission_date, usa date_cession
+              date_cession: dateCession,
+              cpf_bancarizador_endossante: '34.337.707/0001-00',
+              n_contract: '00000000000000000000000000000000000000000000000000'
+            };
+            
+            try {
+              const savedRelatory = await this.relatoryRepository.create(relatoryData);
+              savedRelatories.push(savedRelatory);
+              console.log(`Relatório salvo com ID ${savedRelatory.id} para as datas: emission_date=${emissionDate || 'null'}, date_cession=${dateCession || 'null'}`);
+            } catch (error) {
+              console.error(`Erro ao salvar relatório para as datas: emission_date=${emissionDate || 'null'}, date_cession=${dateCession || 'null'}:`, error);
+            }
+          }
+        }
+        
         return res.json({
           exists: true,
           file: {
@@ -325,7 +419,10 @@ class ReportController {
             size: stats.size,
             created: stats.birthtime,
             modified: stats.mtime
-          }
+          },
+          columnW: columnW,
+          columnY: columnY,
+          savedRelatories: savedRelatories.length
         });
       } catch (error) {
         return res.json({
