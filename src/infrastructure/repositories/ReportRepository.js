@@ -1,7 +1,7 @@
 const pool = require('../database/config');
 
 class ReportRepository {
-  async createReport(reportData) {
+  async create(reportData) {
     const { directory_name, file_size, uploaded_by } = reportData;
     
     const query = `
@@ -56,4 +56,4 @@ class ReportRepository {
   }
 }
 
-module.exports = { ReportRepository }; 
+module.exports = ReportRepository; 

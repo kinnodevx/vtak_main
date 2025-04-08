@@ -15,6 +15,10 @@ const roleRoutes = require('./roleRoutes');
 const clientRoutes = require('./clientRoutes');
 const reportRoutes = require('./reportRoutes');
 const clientAuthMiddleware = require('../middleware/clientAuth');
+const jwtAuthMiddleware = require('../middleware/jwtAuth');
+const authRoutes = require('./auth.routes');
+const protectedRoutes = require('./protected.routes');
+const uploadRoutes = require('./upload.routes');
 
 // Inicialização dos repositórios
 const userRepository = new UserRepository();
@@ -45,5 +49,14 @@ router.post('/users', clientAuthMiddleware, userController.create.bind(userContr
 router.use('/users', userRoutes(userController));
 router.use('/roles', roleRoutes(roleController));
 router.use('/reports', reportRoutes());
+
+// Rotas públicas
+router.use('/auth', authRoutes);
+
+// Rotas protegidas
+router.use('/api', jwtAuthMiddleware, protectedRoutes);
+
+// Rotas de upload
+router.use('/api', jwtAuthMiddleware, uploadRoutes);
 
 module.exports = router; 

@@ -1,88 +1,174 @@
-# VTAK - Sistema de Gestão de Relatórios
+# Backend com Arquitetura Hexagonal
 
-Este é o backend do sistema VTAK, responsável por gerenciar o upload e processamento de relatórios.
+Este projeto implementa um backend em Node.js utilizando a Arquitetura Hexagonal (também conhecida como Ports and Adapters). A arquitetura hexagonal é uma abordagem que separa a lógica de negócio da infraestrutura, tornando o sistema mais flexível e testável.
 
-## Funcionalidades
+## Estrutura do Projeto
 
-- Upload de arquivos ZIP contendo relatórios
-- Extração automática dos arquivos
-- Validação dos arquivos obrigatórios
-- Autenticação via JWT
-- Controle de acesso baseado em roles
-- API RESTful
-
-## Requisitos
-
-- Node.js 18+
-- PostgreSQL 14+
-
-## Instalação
-
-1. Clone o repositório:
-```bash
-git clone https://github.com/seu-usuario/vtak_main.git
-cd vtak_main
+```
+src/
+├── application/     # Casos de uso e regras de negócio
+├── domain/         # Entidades e regras de domínio
+├── infrastructure/ # Implementações concretas
+├── interfaces/     # Controladores e rotas
+└── shared/         # Utilitários e configurações
 ```
 
-2. Instale as dependências:
+## Camadas da Arquitetura
+
+### 1. Domain Layer (src/domain/)
+
+A camada de domínio contém as entidades e regras de negócio puros. É o coração da aplicação e não deve depender de nenhuma outra camada.
+
+#### Exemplo: Entidade User
+```javascript
+class User {
+  constructor({ id, name, email, password }) {
+    this.id = id;
+    this.name = name;
+    this.email = email;
+    this.password = password;
+  }
+
+  validate() {
+    if (!this.name || !this.email || !this.password) {
+      throw new Error('Dados do usuário inválidos');
+    }
+  }
+}
+```
+
+### 2. Application Layer (src/application/)
+
+Contém os casos de uso da aplicação. Esta camada implementa as regras de negócio e coordena as operações entre as entidades.
+
+#### Exemplo: Caso de Uso CreateUser
+```javascript
+class CreateUser {
+  constructor(userRepository) {
+    this.userRepository = userRepository;
+  }
+
+  async execute(userData) {
+    const user = new User(userData);
+    user.validate();
+    
+    const existingUser = await this.userRepository.findByEmail(user.email);
+    if (existingUser) {
+      throw new Error('Email já cadastrado');
+    }
+
+    return this.userRepository.save(user);
+  }
+}
+```
+
+### 3. Interfaces Layer (src/interfaces/)
+
+Responsável por expor a aplicação para o mundo externo. Pode ser através de APIs REST, GraphQL, CLI, etc.
+
+#### Controladores
+```javascript
+class UserController {
+  constructor(createUser) {
+    this.createUser = createUser;
+  }
+
+  async create(req, res) {
+    try {
+      const user = await this.createUser.execute(req.body);
+      return res.status(201).json(user);
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+}
+```
+
+#### Rotas
+```javascript
+const router = Router();
+
+module.exports = (createUser) => {
+  const userController = new UserController(createUser);
+  router.post('/', userController.create.bind(userController));
+  return router;
+};
+```
+
+### 4. Infrastructure Layer (src/infrastructure/)
+
+Implementa as interfaces definidas na camada de domínio. Pode incluir:
+- Repositórios de banco de dados
+- Serviços externos
+- Cache
+- Mensageria
+
+## Fluxo de Dados
+
+1. **Requisição HTTP** chega ao servidor
+2. **Router** direciona para o controlador apropriado
+3. **Controller** recebe os dados e chama o caso de uso
+4. **Use Case** coordena a operação usando a entidade
+5. **Entity** valida os dados e aplica regras de negócio
+6. **Repository** persiste os dados
+7. **Response** é retornada ao cliente
+
+## Configuração do Ambiente
+
+1. Instale as dependências:
 ```bash
 npm install
 ```
 
-3. Configure as variáveis de ambiente:
-```bash
-cp .env.example .env
-# Edite o arquivo .env com suas configurações
-```
+2. Configure as variáveis de ambiente no arquivo `.env`
 
-4. Inicialize o banco de dados:
-```bash
-npm run init-db
-```
-
-5. Inicie o servidor:
+3. Inicie o servidor:
 ```bash
 npm run dev
 ```
 
-## Estrutura do Projeto
+## Endpoints Disponíveis
 
-O projeto segue a arquitetura hexagonal (ports and adapters):
+### Usuários
+- `POST /api/users` - Cria um novo usuário
+  ```json
+  {
+    "name": "Nome do Usuário",
+    "email": "email@exemplo.com",
+    "password": "senha123"
+  }
+  ```
 
-```
-src/
-  ├── application/        # Casos de uso da aplicação
-  ├── domain/            # Regras de negócio e entidades
-  ├── infrastructure/    # Implementações concretas (banco de dados, etc)
-  └── interfaces/        # Controllers, rotas e middlewares
-```
+## Boas Práticas
 
-## API
+1. **Separação de Responsabilidades**
+   - Cada camada tem uma responsabilidade específica
+   - As dependências sempre apontam para dentro (domínio)
 
-### Autenticação
+2. **Testabilidade**
+   - Facilita a criação de testes unitários
+   - Permite mockar facilmente as dependências externas
 
-Para acessar as rotas protegidas, é necessário:
+3. **Manutenibilidade**
+   - Código organizado e previsível
+   - Facilita a adição de novas funcionalidades
 
-1. Ter um par de chaves de API (CI/CS)
-2. Fazer login para obter um token JWT
-3. Incluir o token JWT no header `Authorization`
+4. **Flexibilidade**
+   - Fácil trocar implementações (ex: banco de dados)
+   - Adaptável a diferentes interfaces (REST, GraphQL, etc.)
 
-### Rotas
+## Próximos Passos
 
-- `POST /api/auth/login`: Login de usuário
-- `POST /api/reports/upload`: Upload de relatório
-- `GET /api/reports`: Listar relatórios
-- `GET /api/reports/files/:reportDir`: Listar arquivos de um relatório
-- `GET /api/reports/file/:reportDir/:fileName`: Download de arquivo
+1. Implementar autenticação
+2. Adicionar validações mais robustas
+3. Implementar testes unitários e de integração
+4. Adicionar logging e monitoramento
+5. Configurar CI/CD
 
 ## Contribuição
 
 1. Faça um fork do projeto
 2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
-3. Faça commit das suas alterações (`git commit -am 'Adiciona nova feature'`)
-4. Faça push para a branch (`git push origin feature/nova-feature`)
-5. Crie um Pull Request
-
-## Licença
-
-Este projeto está sob a licença MIT. 
+3. Commit suas mudanças (`git commit -m 'Adiciona nova feature'`)
+4. Push para a branch (`git push origin feature/nova-feature`)
+5. Abra um Pull Request 

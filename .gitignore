@@ -1,49 +1,27 @@
 # Dependências
 node_modules/
-npm-debug.log
-yarn-debug.log
-yarn-error.log
 
-# Ambiente
+# Arquivos de ambiente
 .env
-.env.local
-.env.*.local
+src/.env
 
-# Diretórios de build
-/dist
-/build
+# Arquivos de relatórios
+relatories/
 
 # Logs
-logs
 *.log
+npm-debug.log*
 
-# Diretório de relatórios
-/relatories/*
-!/relatories/.gitkeep
-
-# Sistema operacional
+# Arquivos do sistema
 .DS_Store
 Thumbs.db
 
-# IDEs e editores
+# Arquivos de IDE
 .idea/
 .vscode/
 *.swp
 *.swo
-*.swn
-*.bak
 
-# Arquivos grandes
-reports/relatory_01/Relatorio de estoque.xlsx
-temp/*.zip
-
-# Diretórios
-/node_modules
-/dist
-/build
-/.next
-/.cache
-
-# Diretório temp
-/temp/*
-!/temp/.gitkeep 
+# Arquivos temporários
+temp/
+*.tmp 
