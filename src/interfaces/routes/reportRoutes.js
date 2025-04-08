@@ -7,7 +7,8 @@ const uploadMiddleware = require('../middleware/uploadMiddleware');
 module.exports = () => {
   const reportController = new ReportController();
 
-  // Rotas públicas
+  // Rotas públicas (sem autenticação)
+  router.get('/check-production/:reportDir', reportController.checkProductionReport.bind(reportController));
   router.get('/file/:reportDir/:fileName', reportController.getReportFile.bind(reportController));
   router.get('/files/:reportDir', reportController.listReportFiles.bind(reportController));
   

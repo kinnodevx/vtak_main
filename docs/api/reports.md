@@ -2,7 +2,7 @@
 
 ## Autenticação
 
-Todas as rotas requerem autenticação JWT. O token deve ser enviado no header `Authorization` no formato:
+Todas as rotas requerem autenticação JWT, exceto a rota de verificação de arquivo de produção. O token deve ser enviado no header `Authorization` no formato:
 ```
 Authorization: Bearer <seu_token_jwt>
 ```
@@ -142,6 +142,47 @@ curl -X GET http://localhost:3000/api/reports/file/relatory_1234567890/Relatorio
 ```json
 {
   "error": "Arquivo não encontrado"
+}
+```
+
+### GET /check-production/:reportDir
+
+Verifica se existe o arquivo "Relatorio - Produção.xlsx" em um diretório específico. Esta rota não requer autenticação.
+
+#### Parâmetros da URL
+- `reportDir`: Nome do diretório do relatório (ex: relatory_01)
+
+#### Exemplo de Requisição
+```bash
+curl -X GET http://localhost:3000/check-production/relatory_01
+```
+
+#### Resposta de Sucesso (200) - Arquivo Encontrado
+```json
+{
+  "exists": true,
+  "file": {
+    "name": "Relatorio - Produção.xlsx",
+    "size": 6661570,
+    "created": "2025-04-08T18:15:05.584Z",
+    "modified": "2025-03-31T20:34:56.000Z"
+  }
+}
+```
+
+#### Resposta de Sucesso (200) - Arquivo Não Encontrado
+```json
+{
+  "exists": false,
+  "message": "Arquivo de produção não encontrado neste diretório"
+}
+```
+
+#### Resposta de Erro (404)
+```json
+{
+  "error": "Diretório não encontrado",
+  "exists": false
 }
 ```
 

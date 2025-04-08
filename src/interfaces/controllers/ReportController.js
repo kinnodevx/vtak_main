@@ -291,7 +291,51 @@ class ReportController {
       });
     } catch (error) {
       console.error('Erro ao listar diretórios:', error);
-      return res.status(500).json({ error: 'Erro ao listar diretórios e arquivos' });
+      return res.status(500).json({ error: 'Erro ao listar diretórios' });
+    }
+  }
+
+  async checkProductionReport(req, res) {
+    try {
+      const { reportDir } = req.params;
+      const baseDir = path.join(process.cwd(), 'relatories');
+      const targetDir = path.join(baseDir, reportDir);
+      const targetFile = 'Relatorio - Produção.xlsx';
+      
+      // Verifica se o diretório existe
+      try {
+        await fs.access(targetDir);
+      } catch (error) {
+        return res.status(404).json({ 
+          error: 'Diretório não encontrado',
+          exists: false
+        });
+      }
+      
+      // Verifica se o arquivo existe
+      const filePath = path.join(targetDir, targetFile);
+      try {
+        await fs.access(filePath);
+        const stats = await fs.stat(filePath);
+        
+        return res.json({
+          exists: true,
+          file: {
+            name: targetFile,
+            size: stats.size,
+            created: stats.birthtime,
+            modified: stats.mtime
+          }
+        });
+      } catch (error) {
+        return res.json({
+          exists: false,
+          message: 'Arquivo de produção não encontrado neste diretório'
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao verificar arquivo de produção:', error);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
     }
   }
 }

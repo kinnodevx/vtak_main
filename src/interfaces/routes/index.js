@@ -10,6 +10,7 @@ const UserController = require('../controllers/UserController');
 const AuthController = require('../controllers/AuthController');
 const RoleController = require('../controllers/RoleController');
 const ClientController = require('../controllers/ClientController');
+const { ReportController } = require('../controllers/ReportController');
 const userRoutes = require('./userRoutes');
 const roleRoutes = require('./roleRoutes');
 const clientRoutes = require('./clientRoutes');
@@ -35,6 +36,7 @@ const userController = new UserController(createUser);
 const authController = new AuthController(authenticateUser);
 const roleController = new RoleController(manageRoles);
 const clientController = new ClientController();
+const reportController = new ReportController();
 
 // Rotas de administração de chaves de API (protegidas por JWT)
 router.use('/admin/clients', clientRoutes(clientController));
@@ -48,6 +50,8 @@ router.post('/users', clientAuthMiddleware, userController.create.bind(userContr
 // Usuários precisam estar autenticados (ter feito login e possuir um token válido)
 router.use('/users', userRoutes(userController));
 router.use('/roles', roleRoutes(roleController));
+
+// Rotas de relatórios (algumas protegidas por JWT)
 router.use('/reports', reportRoutes());
 
 // Rotas públicas
